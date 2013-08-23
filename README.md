@@ -1,4 +1,4 @@
-findteambugs
-============
+find-team-bugs
+==============
 
-Find, report and optionally fix Team missing, orphan and wrongly named jobs.
+Scan a Hudson home with Teams and check for malformed job names, orphan jobs or missing jobs.
