@@ -98,12 +98,12 @@ public class Team {
             } else if ("description".equals(name)) {
                 description = child.getTextTrim();
                 if (description.isEmpty()) {
-                    find.info("Empty description"+nameString);
+                    find.fine("Empty description"+nameString);
                 }
             } else if ("customFolderName".equals(name)) {
                 customFolderName = child.getTextTrim();
                 if (customFolderName.isEmpty()) {
-                    find.warn("Empty customFolderName "+nameString);
+                    find.fine("Empty customFolderName "+nameString);
                 }
             } else if ("job".equals(name)) {
                 TeamJob job = new TeamJob();

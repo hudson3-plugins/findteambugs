@@ -61,7 +61,7 @@ public class TeamMember {
             } else if ("permissions".equals(name)) {
                     String permissions = child.getTextTrim();
                     if (permissions.isEmpty()) {
-                        find.warn("Team member "+nameString+"has empty permissions"+suffix);
+                        find.info("Team member "+nameString+"has empty permissions"+suffix);
                         continue;
                     }
                     for (String permission : permissions.split(",")) {
@@ -74,7 +74,7 @@ public class TeamMember {
             }
         }
         if (permissions.isEmpty()) {
-            find.warn("Team member "+nameString+"has no permissions"+suffix);
+            find.info("Team member "+nameString+"has no permissions"+suffix);
         }
     }
         

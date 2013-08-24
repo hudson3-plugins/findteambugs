@@ -122,6 +122,7 @@ public class Find {
     }
     
     boolean verbose;
+    boolean fine;
     StringWriter actionsStringWriter;
     PrintWriter actionsWriter;
     int errors = 0;
@@ -356,7 +357,7 @@ public class Find {
                 action.write();
             }
         } else {
-            warn("There are no actions for this teams.xml");
+            fine("There are no actions for this teams.xml");
         }
     }
     
@@ -419,7 +420,7 @@ public class Find {
             if (f.isDirectory()) {
                 Team team = tm.getTeam(f.getName());
                 if (team == null) {
-                    info("Orphan team at "+f.getAbsolutePath());
+                    warn("Orphan team at "+f.getAbsolutePath());
                     actions.add(new Remove(f));
                 }
             }
@@ -434,11 +435,11 @@ public class Find {
                         if (jobFile.isDirectory()) {
                             String jobName = jobFile.getName();
                             if (!team.containsJob(jobName)) {
-                                info("Orphan job "+jobName+" at "+jobFile.getAbsolutePath());
+                                warn("Orphan job "+jobName+" at "+jobFile.getAbsolutePath());
                                 actions.add(new Remove(jobFile));
                             }
                         } else {
-                            info("Job folder contains non-directory: "+jobFile.getAbsolutePath());
+                            warn("Job folder contains non-directory: "+jobFile.getAbsolutePath());
                             actions.add(new RemoveFile(jobFile));
                         }
                     }
@@ -454,12 +455,18 @@ public class Find {
                 for (Iterator<String> it = job.getVisibilities().iterator(); it.hasNext(); ) {
                     String visibility = it.next();
                     if (!tm.containsTeam(visibility)) {
-                        info("Job "+job.getId()+" visibility "+visibility+" is not a team");
+                        warn("Job "+job.getId()+" visibility "+visibility+" is not a team");
                         it.remove();
                     }
                     
                 }
             }
+        }
+    }
+    
+    public void fine(String msg) {
+        if (fine) {
+            verbose("FINE: "+msg);
         }
     }
     
@@ -479,12 +486,12 @@ public class Find {
 
     public void error(String msg) {
         errors++;
-        verbose("ERROR: "+msg);
+        System.err.println("ERROR: "+msg);
     }
 
     public void exception(File file, Exception e, String what) {
         errors++;
-        System.out.println("Exception while "+what+" "+file.getAbsolutePath());
+        System.err.println("Exception while "+what+" "+file.getAbsolutePath());
         e.printStackTrace();
     }
 }
