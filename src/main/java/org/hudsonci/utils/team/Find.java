@@ -79,6 +79,11 @@ public class Find {
     
     // for testability
     static int doIt(String[] args) {
+        boolean version = arg(args, 'v', "version");
+        if (version) {
+            System.out.println("1.2");
+            System.exit(0);
+        }
         boolean verbose = !arg(args, 'q', "quiet");
         boolean fix = arg(args, 'f', "fix");
         String homePath = arg(args, 0);
@@ -107,6 +112,7 @@ public class Find {
         System.out.println("       where HUDSON_HOME is a path to valid Hudson home");
         System.out.println("                          to scan for team-related bugs");
         System.out.println("       where SWITCHES are:");
+        System.out.println("         -v | --version   Print version and exit (optional)");
         System.out.println("         -q | --quiet     Don't write to standard output (optional)");
         System.out.println("         -f | --fix       Fix team-related bugs (optional)");
         System.out.println("                          Removes orphan jobs and badly named jobs");
