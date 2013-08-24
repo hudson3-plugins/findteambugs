@@ -168,7 +168,8 @@ public class Find {
                 if (scan(f, level - 1, fun)) {
                     found = true;
                 }
-            } else if (f.isFile() && "teams.xml".equals(f.getName())) {
+            } else if (f.isFile() && "teams.xml".equals(f.getName())
+                    && "teams".equals(f.getParentFile().getName())) {
                 fun.call(f);
                 found = true;
             }
@@ -318,6 +319,8 @@ public class Find {
             return;
         }
         
+        verifyJobNames();
+        
         verifyJobsOnDisk();
 
         verifyOnlyJobsOnDisk();
@@ -364,9 +367,37 @@ public class Find {
         return new File(getTeamJobsDir(team), jobName);
     }
     
+    private static final String TEAM_SEPARATOR = ".";
+    
     private File getTeamJobsDir(Team team) {
         File teamDir = team.isPublic() ? hudsonHomeDir : new File(hudsonTeamsDir, team.teamName);
         return new File(teamDir, "jobs");
+    }
+    
+    private void verifyJobNames() {
+        for (Team team : tm.getTeams()) {
+            String teamName = team.getName();
+            for (Iterator<String> it = team.getJobNames().iterator(); it.hasNext(); ) {
+                String jobName = it.next();
+                if (!team.isPublic()) {
+                    if (!jobName.startsWith(team.getName()+TEAM_SEPARATOR)) {
+                        warn("Team "+teamName+" job "+jobName+" does not begin with "+teamName+".");
+                        it.remove();
+                        continue;
+                    }
+                } else {
+                    if (jobName.contains(TEAM_SEPARATOR)) {
+                        info("Public job "+jobName+" contains "+TEAM_SEPARATOR);
+                        info("  This is possible, but may indicate other problems");
+                    }
+                }
+                File jobDir = getJobDir(team, jobName);
+                if (!jobDir.exists() || !jobDir.isDirectory()) {
+                    warn("Team "+team.getName()+" job "+jobName+" not found at "+jobDir.getAbsolutePath());
+                    it.remove();
+                }
+            }
+        }
     }
     
     private void verifyJobsOnDisk() {
