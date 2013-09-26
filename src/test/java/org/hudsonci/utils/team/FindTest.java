@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import static junit.framework.Assert.assertEquals;
 import static junit.framework.Assert.assertTrue;
 import junit.framework.Test;
 import junit.framework.TestCase;
@@ -63,14 +64,28 @@ public class FindTest
         // Verify that the file system corresponds to teams.xml
         FileFunction fun = new FileFunction() {
             public void call(File f) {
-                verifyFileSystem(f);
+                verifyFileSystem(f, false);
             }
         };
         Find.scan(new File("target/test"), 3, fun);
         assertEquals(numberOfTeamsXmls, 1);
     }
     
-    private void verifyFileSystem(File teamsXmlFile) {
+    public void testFindNoPublic() throws IOException
+    {
+        assertEquals(Find.doIt(new String[] {"-qfn", "target/test/"}), 0);
+        
+        // Verify that the file system corresponds to teams.xml
+        FileFunction fun = new FileFunction() {
+            public void call(File f) {
+                verifyFileSystem(f, true);
+            }
+        };
+        Find.scan(new File("target/test"), 3, fun);
+        assertEquals(numberOfTeamsXmls, 1);
+    }
+    
+    private void verifyFileSystem(File teamsXmlFile, boolean nopublic) {
         assertTrue("teams.xml".equals(teamsXmlFile.getName()));
         numberOfTeamsXmls++;
         File teamsDir = teamsXmlFile.getParentFile();
@@ -90,6 +105,9 @@ public class FindTest
                         if ("name".equals(childName)) {
                             // team must exist
                             if ("public".equals(child.getText())) {
+                                if (nopublic) {
+                                    assertTrue("Public team found", false);
+                                }
                                 teamDir = homeDir;
                             } else {
                                 teamDir = new File(teamsDir, child.getText());
@@ -105,6 +123,16 @@ public class FindTest
                             File jobDir = new File(new File(teamDir, "jobs"), id);
                             assertTrue("Not exists "+jobDir.getAbsolutePath(), jobDir.exists());
                             assertTrue("Not exists "+jobDir.getAbsolutePath(), jobDir.isDirectory());
+                        }
+                    }
+                }
+            }
+            if (nopublic) {
+                File jobsDir = new File(homeDir, "jobs");
+                if (jobsDir.exists() && jobsDir.isDirectory()) {
+                    for (File file : jobsDir.listFiles()) {
+                        if (file.isDirectory()) {
+                            assertTrue("Public job found at "+file.getAbsolutePath(), false);
                         }
                     }
                 }

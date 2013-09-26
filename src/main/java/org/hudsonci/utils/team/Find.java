@@ -26,8 +26,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import org.hudsonci.Cmd;
 import org.hudsonci.Returns;
 
@@ -81,11 +79,12 @@ public class Find {
     static int doIt(String[] args) {
         boolean version = arg(args, 'v', "version");
         if (version) {
-            System.out.println("1.2");
+            System.out.println("1.3");
             System.exit(0);
         }
         boolean verbose = !arg(args, 'q', "quiet");
         boolean fix = arg(args, 'f', "fix");
+        boolean nopublic = arg(args, 'n', "nopublic");
         String homePath = arg(args, 0);
         if (homePath == null || args.length > argSet.size()) {
             return usage();
@@ -95,7 +94,7 @@ public class Find {
             return usage();
         }
         Find app = new Find();
-        app.scan(file, verbose);
+        app.scan(file, verbose, nopublic);
         int returnCode = app.errors();
         if (returnCode == 0 && fix) {
             returnCode = app.doActions();
@@ -114,6 +113,7 @@ public class Find {
         System.out.println("       where SWITCHES are:");
         System.out.println("         -v | --version   Print version and exit (optional)");
         System.out.println("         -q | --quiet     Don't write to standard output (optional)");
+        System.out.println("         -n | --nopublic  Flag public jobs as errors (optional)");
         System.out.println("         -f | --fix       Fix team-related bugs (optional)");
         System.out.println("                          Removes orphan jobs and badly named jobs");
         System.out.println("                          from disk, and missing jobs from teams.xml");
@@ -128,6 +128,7 @@ public class Find {
     }
     
     boolean verbose;
+    boolean nopublic;
     boolean fine;
     StringWriter actionsStringWriter;
     PrintWriter actionsWriter;
@@ -148,10 +149,10 @@ public class Find {
         void call(File file);
     }
     
-    private void scan(File file, final boolean verbose) {
+    private void scan(File file, final boolean verbose, final boolean nopublic) {
         FileFunction fun = new FileFunction() {
             public void call(File f) {
-                convert(f, verbose);
+                convert(f, verbose, nopublic);
             }
         };
         if (!scan(file, 3, fun)) {
@@ -304,8 +305,9 @@ public class Find {
         }
     }
     
-    private void init(File file, boolean verbose) {
+    private void init(File file, boolean verbose, boolean nopublic) {
         this.verbose = verbose;
+        this.nopublic = nopublic;
         hudsonTeamsDir = file.getParentFile();
         hudsonHomeDir = hudsonTeamsDir.getParentFile();
         hudsonJobsDir = new File(hudsonHomeDir, "jobs");
@@ -314,8 +316,8 @@ public class Find {
         actions = new ArrayList<Action>();
     }
 
-    private void convert(File file, boolean verbose) {
-        init(file, verbose);
+    private void convert(File file, boolean verbose, boolean nopublic) {
+        init(file, verbose, nopublic);
         convert(file);
     }
     
@@ -324,6 +326,10 @@ public class Find {
             error("Could not read teams.xml file "+file.getAbsolutePath());
             error("This Hudson home skipped ");
             return;
+        }
+        
+        if (nopublic) {
+            verifyNoPublic();
         }
         
         verifyJobNames();
@@ -379,6 +385,21 @@ public class Find {
     private File getTeamJobsDir(Team team) {
         File teamDir = team.isPublic() ? hudsonHomeDir : new File(hudsonTeamsDir, team.teamName);
         return new File(teamDir, "jobs");
+    }
+    
+    private void verifyNoPublic() {
+        for (File file : hudsonJobsDir.listFiles()) {
+            if (file.isDirectory()) {
+                warn("Public job "+file.getName()+" found at "+file.getAbsolutePath());
+                actions.add(new Remove(file));
+            }
+        }
+        for (Iterator<Team> it = tm.getTeams().iterator(); it.hasNext(); ) {
+            Team team = it.next();
+            if (team.isPublic) {
+                it.remove();
+            }
+        }
     }
     
     private void verifyJobNames() {

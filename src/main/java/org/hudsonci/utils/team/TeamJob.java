@@ -39,6 +39,7 @@ public class TeamJob {
             find.warn("Job with no id or visibility"+suffix);
             return;
         }
+        boolean checkId = true;
         String nameString = "";
         for (Element child : elements) {
             String name = child.getName();
@@ -46,6 +47,7 @@ public class TeamJob {
                 String jobId = child.getTextTrim();
                 if (jobMap.containsKey(jobId)) {
                     find.warn("Duplicate job "+jobId+suffix);
+                    checkId = false;
                 } else {
                     id = jobId;
                     nameString = "in job " + id + " ";
@@ -61,7 +63,7 @@ public class TeamJob {
                 }
             }
         }
-        if (id == null) {
+        if (checkId && id == null) {
             find.warn("Job with no id"+suffix);
         }
     }
