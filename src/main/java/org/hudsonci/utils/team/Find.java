@@ -79,7 +79,7 @@ public class Find {
     static int doIt(String[] args) {
         boolean version = arg(args, 'v', "version");
         if (version) {
-            System.out.println("1.3");
+            System.out.println("1.4");
             System.exit(0);
         }
         boolean verbose = !arg(args, 'q', "quiet");
@@ -98,9 +98,8 @@ public class Find {
         int returnCode = app.errors();
         if (returnCode == 0 && fix) {
             returnCode = app.doActions();
-        }
-        if (returnCode != 0) {
-            System.err.println(""+returnCode+" errors detected"+(verbose ? "" : "; use -v or --verbose for details"));
+        } else if (returnCode != 0) {
+            System.err.println(""+returnCode+" errors detected");
             System.err.println("The teams.xml file is unchanged");
         };
         return -returnCode;
@@ -287,6 +286,27 @@ public class Find {
         }
     }
     
+    private class Rename extends WriteAction {
+        File oldFilePath;
+        String newFileName;
+        
+        public Rename(File oldFilePath, String newFileName) {
+            this.oldFilePath = oldFilePath;
+            this.newFileName = newFileName;
+        }
+        
+        public void write() {
+            String oldPath = oldFilePath.getAbsolutePath();
+            File parentDir = oldFilePath.getParentFile();
+            String newPath = parentDir.getAbsolutePath() + File.separatorChar + newFileName;
+            if (File.separatorChar == '/') {
+                actionsWriter.println("mv \""+oldPath+"\" \""+newPath+"\"");
+            } else {
+                actionsWriter.println("rename \""+oldPath+"\" \""+newPath+"\"");
+            }
+        }
+    }
+    
     private class WriteTeamsXml extends RunAction {
         File file;
         TeamManager tm;
@@ -298,6 +318,7 @@ public class Find {
         
         public void run() {
             try {
+                info("Rewriting teams.xml at "+file.getAbsolutePath());
                 tm.writeTeamsXml(file);
             } catch (IOException ex) {
                 exception(file, ex, "Writing fixed teams.xml");
@@ -331,6 +352,8 @@ public class Find {
         if (nopublic) {
             verifyNoPublic();
         }
+        
+        verifyTeamsOnDisk();
         
         verifyJobNames();
         
@@ -373,6 +396,11 @@ public class Find {
         }
     }
     
+    private File getTeamDir(Team team) {
+        // Only for non-public!
+        return new File(hudsonTeamsDir, team.teamName);
+    }
+    
     private File getJobDir(Team team, String jobName) {
         if (team.isPublic) {
             return new File(hudsonJobsDir, jobName);
@@ -405,13 +433,26 @@ public class Find {
     private void verifyJobNames() {
         for (Team team : tm.getTeams()) {
             String teamName = team.getName();
-            for (Iterator<String> it = team.getJobNames().iterator(); it.hasNext(); ) {
-                String jobName = it.next();
+            for (Iterator<TeamJob> it = team.getJobs().iterator(); it.hasNext(); ) {
+                TeamJob job = it.next();
+                String jobName = job.getId();
                 if (!team.isPublic()) {
                     if (!jobName.startsWith(team.getName()+TEAM_SEPARATOR)) {
                         warn("Team "+teamName+" job "+jobName+" does not begin with "+teamName+".");
                         it.remove();
                         continue;
+                    }
+                    int teamNameLen = team.getName().length();
+                    if (jobName.indexOf('.', teamNameLen+1) != -1) {
+                        warn("Team "+teamName+" job "+jobName+" contains multiple "+TEAM_SEPARATOR+" characters");
+                        String newJobName = team.getName()+TEAM_SEPARATOR
+                                + jobName.substring(teamNameLen+1).replaceAll("[.]", "-");
+                        File jobDir = getJobDir(team, jobName);
+                        if (jobDir.exists() && jobDir.isDirectory()) {
+                            actions.add(new Rename(jobDir, newJobName));
+                            job.replaceId(newJobName);
+                            continue;
+                        }
                     }
                 } else {
                     if (jobName.contains(TEAM_SEPARATOR)) {
@@ -422,6 +463,19 @@ public class Find {
                 File jobDir = getJobDir(team, jobName);
                 if (!jobDir.exists() || !jobDir.isDirectory()) {
                     warn("Team "+team.getName()+" job "+jobName+" not found at "+jobDir.getAbsolutePath());
+                    it.remove();
+                }
+            }
+        }
+    }
+    
+    private void verifyTeamsOnDisk() {
+        for (Iterator<Team> it = tm.getTeams().iterator(); it.hasNext(); ) {
+            Team team = it.next();
+            if (!team.isPublic) {
+                File teamDir = getTeamDir(team);
+                if (!teamDir.exists() || !teamDir.isDirectory()) {
+                    warn("Team not on disk "+team.teamName);
                     it.remove();
                 }
             }

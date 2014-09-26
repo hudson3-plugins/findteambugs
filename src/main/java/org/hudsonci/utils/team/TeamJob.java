@@ -32,6 +32,10 @@ public class TeamJob {
     public Set<String> getVisibilities() {
         return visibilitySet;
     }
+    
+    public void replaceId(String newId) {
+        this.id = newId;
+    }
 
     public void read(Element parent, Find find, Map<String,TeamJob> jobMap, String suffix) {
         List<Element> elements = (List<Element>) parent.elements();
